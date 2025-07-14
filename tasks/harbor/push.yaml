@@ -1,0 +1,54 @@
+# In your forked catalog: ./tasks/harbor/push.yaml
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: harbor-push
+spec:
+  params:
+    - name: app-name
+      description: The name of the application chart to push
+    - name: version
+      description: The version of the chart to push
+    - name: harbor-domain
+      description: The domain of the Harbor registry
+    - name: harbor-project
+      description: The Harbor project to push the chart to
+  volumes:
+    - name: harbor-credentials-vol
+      secret:
+        # This MUST match the name of the secret you created with kubectl
+        secretName: harbor-credentials 
+  steps:
+    - name: push-chart-to-harbor
+      image: ghcr.io/jenkins-x/jx-boot:3.11.107
+      volumeMounts:
+        - name: harbor-credentials-vol
+          # The key '.dockerconfigjson' from the secret will be mounted as a file named 'config.json'
+          # inside this directory. This is exactly what helm/docker expect.
+          mountPath: /tekton/home/.docker
+      script: |
+        #!/usr/bin/env sh
+        
+        echo "Starting push to Harbor for app: $(params.app-name) version: $(params.version)"
+        
+        CHART_PACKAGE_PATH="./charts/$(params.app-name)/$(params.app-name)-$(params.version).tgz"
+        
+        # Check if the packaged chart actually exists
+        if [ ! -f "$CHART_PACKAGE_PATH" ]; then
+          echo "ERROR: Chart package not found at ${CHART_PACKAGE_PATH}!"
+          # This might be a case where an app has no chart. Exit cleanly.
+          # If a chart is expected, you might want to `exit 1` instead.
+          echo "Skipping Harbor push as no chart package was found."
+          exit 0
+        fi
+        
+        HARBOR_CHART_REPO_URL="oci://$(params.harbor-domain)/$(params.harbor-project)"
+        
+        echo "Logging into Harbor registry at $(params.harbor-domain)..."
+        # Assumes a secret named 'harbor-credentials' is mounted by the pipeline
+        helm registry login "$(params.harbor-domain)"
+        
+        echo "Pushing ${CHART_PACKAGE_PATH} to ${HARBOR_CHART_REPO_URL}"
+        helm push "${CHART_PACKAGE_PATH}" "${HARBOR_CHART_REPO_URL}"
+        
+        echo "Successfully pushed chart to Harbor project: $(params.harbor-project)."
