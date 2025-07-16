@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
-  name: harbor-push
+  name: push-to-harbor
 spec:
   params:
     - name: app-name
@@ -19,7 +19,7 @@ spec:
         # This MUST match the name of the secret you created with kubectl
         secretName: harbor-credentials 
   steps:
-    - name: push-chart-to-harbor
+    - name: push-to-harbor
       image: ghcr.io/jenkins-x/jx-boot:3.11.107
       volumeMounts:
         - name: harbor-credentials-vol
