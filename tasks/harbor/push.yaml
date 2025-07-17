@@ -7,12 +7,16 @@ spec:
   params:
     - name: app-name
       description: The name of the application chart to push
+      default: "default"
     - name: version
       description: The version of the chart to push
+      default: "0.0.0"
     - name: harbor-domain
       description: The domain of the Harbor registry
+      default: "harbor.nid3.com"
     - name: harbor-project
       description: The Harbor project to push the chart to
+      default: "shared"
   volumes:
     - name: harbor-credentials-vol
       secret:
