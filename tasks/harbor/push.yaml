@@ -5,12 +5,6 @@ metadata:
   name: push-to-harbor
 spec:
   params:
-    - name: app-name
-      description: The name of the application chart to push
-      default: "default"
-    - name: version
-      description: The version of the chart to push
-      default: "0.0.0"
     - name: harbor-domain
       description: The domain of the Harbor registry
       default: "harbor.nid3.com"
@@ -33,16 +27,25 @@ spec:
       script: |
         #!/usr/bin/env sh
         
-        echo "Starting push to Harbor for app: $(params.app-name) version: $(params.version)"
+        # Source the runtime variables created by the 'jx-variables' step
+        source .jx/variables.sh
+        # Read the version from the file created by the 'next-version' step
+        VERSION=$(cat VERSION)
+
+        echo "Starting push to Harbor for app: ${APP_NAME} version: ${VERSION}"
         
-        CHART_PACKAGE_PATH="./charts/$(params.app-name)/$(params.app-name)-$(params.version).tgz"
+        # Check if APP_NAME or VERSION are empty
+        if [ -z "$APP_NAME" ] || [ -z "$VERSION" ]; then
+          echo "ERROR: APP_NAME or VERSION is not set. Exiting."
+          exit 1
+        fi
+        
+        CHART_PACKAGE_PATH="./charts/${APP_NAME}/${APP_NAME}-${VERSION}.tgz"
         
         # Check if the packaged chart actually exists
         if [ ! -f "$CHART_PACKAGE_PATH" ]; then
           echo "ERROR: Chart package not found at ${CHART_PACKAGE_PATH}!"
-          # This might be a case where an app has no chart. Exit cleanly.
-          # If a chart is expected, you might want to `exit 1` instead.
-          echo "Skipping Harbor push as no chart package was found."
+          echo "This might be a case where an app has no chart. Skipping."
           exit 0
         fi
         
